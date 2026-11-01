@@ -5,7 +5,7 @@ type SymbolName = ComponentProps<typeof SymbolView>["name"];
 
 export interface SliderRowProps {
   readonly disabled?: boolean;
-  readonly icon: SymbolName;
+  readonly icon?: SymbolName;
   readonly minimumIcon?: SymbolName;
   readonly maximumIcon?: SymbolName;
   readonly label: string;

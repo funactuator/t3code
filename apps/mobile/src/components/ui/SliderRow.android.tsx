@@ -27,7 +27,9 @@ export function SliderRow(props: SliderRowProps) {
   return (
     <View className={props.disabled ? "gap-2 p-4 opacity-45" : "gap-2 p-4"}>
       <View className="flex-row items-center gap-4">
-        <SymbolView name={props.icon} size={24} tintColorClassName="accent-icon" />
+        {props.icon ? (
+          <SymbolView name={props.icon} size={24} tintColorClassName="accent-icon" />
+        ) : null}
         <Text className="min-w-0 flex-1 text-base">{props.label}</Text>
         <Text className="text-sm text-foreground-muted">{props.valueLabel}</Text>
       </View>

@@ -32,7 +32,7 @@ import {
 import { StackActions, useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { ReactNode } from "react";
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "react";
-import { I18nManager, Keyboard, Platform, View, type ViewStyle } from "react-native";
+import { I18nManager, Keyboard, Platform, Pressable, View, type ViewStyle } from "react-native";
 import { composerImageGallery } from "../../lib/composerImageGallery";
 import { filePreviewGallery } from "../../lib/filePreviewGallery";
 import { FilePreviewModal, type FilePreviewSource } from "../../components/FilePreviewModal";
@@ -68,7 +68,7 @@ import type { ComposerDocumentAttachment } from "../../lib/composerContext";
 import { useProject, useThreadShells } from "../../state/entities";
 import { useMentionableEnvironments } from "../../state/environments";
 import { useLinkedEnvironments } from "../../state/peerLinks";
-import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 
 import { AppText as Text } from "../../components/ui/AppText";
 import { ComposerAttachmentButton } from "./ComposerAttachmentButton";
@@ -82,6 +82,13 @@ import { ComposerEditor, type ComposerEditorHandle } from "../../components/Comp
 import { fileRoutePathSegments } from "../files/filePath";
 import { ComposerActionButton, ComposerToolbarRow } from "../../components/ComposerToolbar";
 import { ComposerModelControl } from "../../components/ComposerModelControl";
+import { ContextIndicatorRing } from "../../components/ContextIndicatorRing";
+import {
+  contextIndicatorPercentage,
+  DEFAULT_CONTEXT_INDICATOR_THRESHOLD,
+} from "../../lib/contextIndicator";
+import { mobilePreferencesAtom } from "../../state/preferences";
+import { useThreadContextWindow } from "../../state/use-thread-detail";
 import {
   composerStripAttachments,
   type DraftComposerFileAttachment,
@@ -412,6 +419,16 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
   const project = useProject(scopeProjectRef(props.environmentId, props.selectedThread.projectId));
   const { themeVariables: materialTheme } = useAppearancePreferences();
   const composerPanel = materialTheme["--color-composer-panel"];
+  const preferencesResult = useAtomValue(mobilePreferencesAtom);
+  const contextWindow = useThreadContextWindow(
+    props.isDraft ? null : scopeThreadRef(props.environmentId, props.selectedThread.id),
+  );
+  const contextPercentage = contextIndicatorPercentage(
+    contextWindow?.usedPercentage ?? null,
+    AsyncResult.isSuccess(preferencesResult)
+      ? (preferencesResult.value.contextIndicatorThreshold ?? DEFAULT_CONTEXT_INDICATOR_THRESHOLD)
+      : DEFAULT_CONTEXT_INDICATOR_THRESHOLD,
+  );
   const navigation = useNavigation();
   const foregroundColor = useUniwindTheme()["--color-foreground"];
   const bodyText = useScaledTextRole("body");
@@ -789,8 +806,19 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
   ) : null;
 
   const modelControl = (
-    <View className="min-w-0 shrink">
+    <View className="min-w-0 shrink flex-row items-center">
+      {compactEditor.isExpanded && contextPercentage !== null ? (
+        <Pressable
+          accessibilityLabel={`Context ${Math.round(contextPercentage)}% used`}
+          accessibilityRole="button"
+          className="h-[44px] shrink-0 items-center justify-center px-1 active:opacity-70"
+          onPress={openSettings}
+        >
+          <ContextIndicatorRing percentage={contextPercentage} size={20} />
+        </Pressable>
+      ) : null}
       <ComposerModelControl
+        contextPercentage={compactEditor.isExpanded ? null : contextPercentage}
         size={usesLargeControls ? "large" : "regular"}
         modelOption={currentModelOption}
         selection={currentModelSelection}

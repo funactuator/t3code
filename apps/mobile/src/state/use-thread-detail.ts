@@ -1,5 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import type { PendingThreadRequests } from "@t3tools/client-runtime/state/thread-requests";
+import { deriveThreadContextWindow } from "@t3tools/client-runtime/state/contextWindow";
 import type { EnvironmentThreadStructure } from "@t3tools/client-runtime/state/models";
 import type { EnvironmentThread } from "@t3tools/client-runtime/state/shell";
 import type {
@@ -54,6 +55,11 @@ export function useQuietThreadStructure(
   return useAtomValue(
     ref === null ? EMPTY_THREAD_STRUCTURE_ATOM : environmentThreadDetails.quietThreadAtom(ref),
   );
+}
+
+export function useThreadContextWindow(ref: ScopedThreadRef | null) {
+  const structure = useQuietThreadStructure(ref);
+  return structure === null ? null : deriveThreadContextWindow(structure.projection);
 }
 
 export function useSelectedThreadProjection(): EnvironmentThread | null {

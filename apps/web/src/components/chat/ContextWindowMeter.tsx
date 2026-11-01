@@ -1,10 +1,11 @@
 import { Button } from "../ui/button";
-import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
-import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import {
-  formatContextWindowCompactionMessage,
+  type ContextWindowSnapshot,
   formatContextWindowCost,
-} from "./ContextWindowMeter.logic";
+  formatContextWindowTokens,
+} from "@t3tools/client-runtime/state/contextWindow";
+import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
+import { formatContextWindowCompactionMessage } from "./ContextWindowMeter.logic";
 import { Minimize2Icon } from "lucide-react";
 import { composerFloatingLayerProps } from "./composerEventScope";
 

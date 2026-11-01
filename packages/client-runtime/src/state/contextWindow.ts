@@ -1,4 +1,4 @@
-import type { ThreadStructure, ThreadStructureTurnItem } from "@t3tools/client-runtime/state/shell";
+import type { ThreadStructure, ThreadStructureTurnItem } from "./shell.ts";
 import type {
   OrchestrationV2ProviderTurn,
   OrchestrationV2ProviderTurnTokenUsage,
@@ -172,6 +172,30 @@ export function deriveLatestContextWindowSnapshot(
   }
 
   return null;
+}
+
+export function deriveThreadContextWindow(
+  projection: Pick<
+    ThreadStructure,
+    "thread" | "contextTransfers" | "providerThreads" | "providerTurns" | "visibleTurnItems"
+  >,
+): ContextWindowSnapshot | null {
+  const providerThread = projection.providerThreads.find(
+    (thread) => thread.id === projection.thread.activeProviderThreadId,
+  );
+  return deriveLatestContextWindowSnapshot(
+    projection.visibleTurnItems,
+    latestProviderTurnTokenUsage(projection.providerTurns, projection, providerThread),
+    providerThread,
+  );
+}
+
+export function formatContextWindowCost(cost: {
+  readonly amount: number;
+  readonly currency: string;
+}): string {
+  const fractionDigits = Math.abs(cost.amount) > 0 && Math.abs(cost.amount) < 0.01 ? 4 : 2;
+  return `${cost.currency} ${cost.amount.toFixed(fractionDigits)}`;
 }
 
 export function formatContextWindowTokens(value: number | null): string {

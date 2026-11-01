@@ -64,7 +64,18 @@ import { AndroidAnchoredMenu } from "../../components/ui/AndroidAnchoredMenu";
 import { IconButton } from "../../components/ui/IconButton";
 import { ProviderIcon } from "../../components/ProviderIcon";
 import { ThemedSwitch } from "../../components/ui/ThemedSwitch";
+import { deriveThreadContextWindow } from "@t3tools/client-runtime/state/contextWindow";
+import { AuthOrchestrationOperateScope, CommandId, MessageId } from "@t3tools/contracts";
 import { cn } from "../../lib/cn";
+import { makeQueuedMessageMetadata } from "../../lib/commandMetadata";
+import {
+  contextIndicatorEnabled,
+  DEFAULT_CONTEXT_INDICATOR_THRESHOLD,
+} from "../../lib/contextIndicator";
+import { resolveProviderInteractionMode } from "../../state/legacy-plan-mode";
+import { readEnvironmentScope } from "../../state/session";
+import { enqueueThreadOutboxMessage } from "../../state/thread-outbox";
+import { ThreadContextCard } from "./ThreadContextCard";
 import { useReduceMotionEnabled } from "../../lib/appState";
 import {
   buildModelOptions,
@@ -928,6 +939,7 @@ function ThreadSettingsMainContent(props: {
   readonly onOpenSubmenu: (submenu: ThreadSettingsSubmenuPage) => void;
 }) {
   const session = useThreadSettingsSession();
+  const { listHeader } = useThreadSettingsPickerPresentation();
   const refreshProvidersCommand = useAtomCommand(serverEnvironment.refreshProviders, {
     reportFailure: false,
   });
@@ -1027,6 +1039,7 @@ function ThreadSettingsMainContent(props: {
       maintainVisibleContentPosition={THREAD_SETTINGS_MAINTAIN_VISIBLE_CONTENT_POSITION}
       ListHeaderComponent={
         <>
+          {listHeader}
           {Platform.OS === "android" ? (
             <View className="px-4 pb-2 pt-3">
               <View
@@ -1187,6 +1200,7 @@ type ThreadSettingsPickerStackParams = {
 
 type ThreadSettingsPickerPresentation = {
   readonly onClose: () => void;
+  readonly listHeader?: ReactNode;
 };
 
 const ThreadSettingsPickerStack = createNativeStackNavigator<ThreadSettingsPickerStackParams>();
@@ -1449,6 +1463,7 @@ function ThreadSettingsPickerNavigator(props: ThreadSettingsPickerPresentation) 
   const foreground = theme["--color-foreground"];
   const presentation = {
     onClose: props.onClose,
+    listHeader: props.listHeader,
   };
 
   return (
@@ -1490,11 +1505,14 @@ function ThreadSettingsPickerNavigator(props: ThreadSettingsPickerPresentation) 
 }
 
 export function ThreadSettingsPickerScreen(
-  props: ThreadSettingsSessionProps & { readonly onClose: () => void },
+  props: ThreadSettingsSessionProps & {
+    readonly onClose: () => void;
+    readonly listHeader?: ReactNode;
+  },
 ) {
   return (
     <ThreadSettingsSessionProvider {...props}>
-      <ThreadSettingsPickerNavigator onClose={props.onClose} />
+      <ThreadSettingsPickerNavigator onClose={props.onClose} listHeader={props.listHeader} />
     </ThreadSettingsSessionProvider>
   );
 }
@@ -1515,6 +1533,7 @@ export function ExistingThreadSettingsRouteScreen({
   // A queued edit can end while the sheet is open; the prompt then belongs to the thread's draft.
   const draftKey = activeComposerDraftKey(threadKey, route.params.draftKey, queuedRunEdit);
   const prompt = useComposerDraft(draftKey).text;
+  const preferencesResult = useAtomValue(mobilePreferencesAtom);
 
   if (!selectedThread) {
     return <View className="flex-1 bg-sheet" />;
@@ -1542,9 +1561,56 @@ export function ExistingThreadSettingsRouteScreen({
     ) ?? null;
   const updateModelSelection = (selection: ModelSelection) =>
     updateThreadDraftModelSelection(threadKey, selection, serverConfig?.providers ?? []);
+  const contextWindow =
+    structure &&
+    contextIndicatorEnabled(
+      AsyncResult.isSuccess(preferencesResult)
+        ? (preferencesResult.value.contextIndicatorThreshold ?? DEFAULT_CONTEXT_INDICATOR_THRESHOLD)
+        : DEFAULT_CONTEXT_INDICATOR_THRESHOLD,
+    )
+      ? deriveThreadContextWindow(structure.projection)
+      : null;
+  const provider = serverConfig?.providers.find(
+    (entry) => entry.instanceId === modelSelection.instanceId,
+  );
+  const canCompact =
+    provider?.slashCommands.some((command) => command.name === "compact") === true &&
+    readEnvironmentScope(selectedThread.environmentId, AuthOrchestrationOperateScope);
+  const compacting =
+    structure?.projection.visibleTurnItems.some(
+      ({ item }) => item.type === "compaction" && item.status === "running",
+    ) === true;
+  const compactContext = () => {
+    const metadata = makeQueuedMessageMetadata();
+    void enqueueThreadOutboxMessage({
+      environmentId: selectedThread.environmentId,
+      threadId: selectedThread.id,
+      messageId: MessageId.make(metadata.messageId),
+      commandId: CommandId.make(metadata.commandId),
+      text: "/compact",
+      attachments: [],
+      modelSelection,
+      runtimeMode: draftSettings.runtimeMode ?? selectedThread.runtimeMode,
+      interactionMode: resolveProviderInteractionMode(
+        provider,
+        draftSettings.interactionMode ?? selectedThread.interactionMode,
+      ),
+      createdAt: metadata.createdAt,
+    });
+    navigation.goBack();
+  };
 
   return (
     <ThreadSettingsPickerScreen
+      listHeader={
+        contextWindow ? (
+          <ThreadContextCard
+            usage={contextWindow}
+            compacting={compacting}
+            onCompact={canCompact ? compactContext : null}
+          />
+        ) : null
+      }
       environmentId={selectedThread.environmentId}
       projectId={selectedThread.projectId}
       providerInstanceId={modelSelection.instanceId}

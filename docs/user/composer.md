@@ -249,6 +249,10 @@ window indicator (legacy)** to see context usage. The meter is off by default
 and appears once the provider reports usage. Open it for usage details and
 **Compact context** when the provider supports compaction.
 
+On mobile, context usage is off by default. Use **Settings → Chat → Composer →
+Context indicator** to choose when a ring shows in the composer. While it's on, tap
+the model icon to see usage at the top of **Thread settings**.
+
 Claude instances can also compact idle threads for you. See
 [compact long conversations](./providers-claude.md#compact-long-conversations).
 

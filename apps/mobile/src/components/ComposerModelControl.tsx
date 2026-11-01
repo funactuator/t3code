@@ -3,11 +3,15 @@ import {
   buildTraitsTriggerDisplay,
   getPromptControlledTraits,
 } from "@t3tools/client-runtime/model-traits";
+import { View } from "react-native";
 import type { ModelOption } from "../lib/modelOptions";
 import { resolveProviderOptionDescriptors } from "../lib/providerOptions";
 import { AppText as Text } from "./ui/AppText";
 import { ComposerInlineControl } from "./ComposerToolbar";
+import { ContextIndicatorRing } from "./ContextIndicatorRing";
 import { ProviderIcon, ProviderInstanceIcon } from "./ProviderIcon";
+
+const RING_OVERHANG = 5;
 
 export function ComposerModelControl(props: {
   readonly modelOption: ModelOption | null;
@@ -19,6 +23,8 @@ export function ComposerModelControl(props: {
   readonly disabled?: boolean;
   readonly size?: "regular" | "large";
   readonly iconOnly?: boolean;
+  /** Draws the ring around the icon. Null hides it. */
+  readonly contextPercentage?: number | null;
   readonly onPress: () => void;
 }) {
   const descriptors = resolveProviderOptionDescriptors({
@@ -45,31 +51,51 @@ export function ComposerModelControl(props: {
         label,
         badge?.showBadge ? badge.displayName : null,
         summary,
+        props.contextPercentage != null
+          ? `Context ${Math.round(props.contextPercentage)}% used`
+          : null,
       ]
         .filter(Boolean)
         .join(", ")}
       size={props.size}
       disabled={props.disabled}
       emphasized
-      renderIcon={(size) =>
-        badge?.showBadge ? (
-          <ProviderInstanceIcon
-            iconUrl={props.modelOption?.providerIconUrl}
-            provider={props.modelOption?.providerDriver}
-            displayName={badge.displayName}
-            accentColor={badge.accentColor}
-            showBadge
-            surfaceColor={props.surfaceColor}
-            size={size}
-          />
-        ) : (
-          <ProviderIcon
-            iconUrl={props.modelOption?.providerIconUrl}
-            provider={props.modelOption?.providerDriver}
-            size={size}
-          />
-        )
-      }
+      renderIcon={(size) => (
+        <>
+          {props.contextPercentage != null ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                left: -RING_OVERHANG,
+                top: -RING_OVERHANG,
+              }}
+            >
+              <ContextIndicatorRing
+                percentage={props.contextPercentage}
+                size={size + RING_OVERHANG * 2}
+              />
+            </View>
+          ) : null}
+          {badge?.showBadge ? (
+            <ProviderInstanceIcon
+              iconUrl={props.modelOption?.providerIconUrl}
+              provider={props.modelOption?.providerDriver}
+              displayName={badge.displayName}
+              accentColor={badge.accentColor}
+              showBadge
+              surfaceColor={props.surfaceColor}
+              size={size}
+            />
+          ) : (
+            <ProviderIcon
+              iconUrl={props.modelOption?.providerIconUrl}
+              provider={props.modelOption?.providerDriver}
+              size={size}
+            />
+          )}
+        </>
+      )}
       label={props.modelOption?.shortName ?? label}
       iconOnly={props.iconOnly}
       suffix={

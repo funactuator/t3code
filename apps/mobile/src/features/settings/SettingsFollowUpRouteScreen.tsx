@@ -5,6 +5,15 @@ import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText as Text } from "../../components/ui/AppText";
+import { SliderRow } from "../../components/ui/SliderRow";
+import {
+  CONTEXT_INDICATOR_THRESHOLD_STEP,
+  CONTEXT_INDICATOR_THRESHOLD_ALWAYS,
+  CONTEXT_INDICATOR_THRESHOLD_NEVER,
+  DEFAULT_CONTEXT_INDICATOR_THRESHOLD,
+  contextIndicatorHelperText,
+  contextIndicatorValueLabel,
+} from "../../lib/contextIndicator";
 import { DEFAULT_FOLLOW_UP_BEHAVIOR, type FollowUpBehavior } from "../../lib/followUpBehavior";
 import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
 import { ListChoiceRow as SettingsChoiceRow } from "../../components/ui/ListChoiceRow";
@@ -36,6 +45,9 @@ export function SettingsFollowUpRouteScreen() {
   const selectedBehavior = AsyncResult.isSuccess(preferencesResult)
     ? (preferencesResult.value.followUpBehavior ?? DEFAULT_FOLLOW_UP_BEHAVIOR)
     : null;
+  const contextIndicatorThreshold = AsyncResult.isSuccess(preferencesResult)
+    ? (preferencesResult.value.contextIndicatorThreshold ?? DEFAULT_CONTEXT_INDICATOR_THRESHOLD)
+    : DEFAULT_CONTEXT_INDICATOR_THRESHOLD;
 
   const content = (
     <ScrollView
@@ -62,6 +74,23 @@ export function SettingsFollowUpRouteScreen() {
         Long-press the send button to use the other option for a single message. With a hardware
         keyboard, hold Command while sending.
       </Text>
+      <View className="pt-3">
+        <SettingsSection
+          title="Composer"
+          footer={contextIndicatorHelperText(contextIndicatorThreshold)}
+        >
+          <SliderRow
+            disabled={!preferencesReady}
+            label="Context indicator"
+            max={CONTEXT_INDICATOR_THRESHOLD_NEVER}
+            min={CONTEXT_INDICATOR_THRESHOLD_ALWAYS}
+            onChange={(value) => savePreferences({ contextIndicatorThreshold: value })}
+            step={CONTEXT_INDICATOR_THRESHOLD_STEP}
+            value={contextIndicatorThreshold}
+            valueLabel={contextIndicatorValueLabel(contextIndicatorThreshold)}
+          />
+        </SettingsSection>
+      </View>
     </ScrollView>
   );
 
